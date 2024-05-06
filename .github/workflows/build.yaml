@@ -27,5 +27,4 @@ jobs:
       - name: "Upload Artifact"
         uses: actions/upload-artifact@v4
         with:
-          name: plugin
-          path: build/libs/ccemux-testnet-plugin-*.jar
+          path: build/libs/ccemux-testnet-plugin-1.0-SNAPSHOT.jar
