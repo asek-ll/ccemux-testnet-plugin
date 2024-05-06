@@ -10,7 +10,10 @@ repositories {
     maven {
         name = "github"
         url = uri("https://maven.pkg.github.com/asek-ll/ccemux-fork")
-        credentials(PasswordCredentials::class)
+        credentials {
+            username = "asek-ll"
+            password = System.getenv("GITHUB_TOKEN")
+        }
     }
 
     exclusiveContent {

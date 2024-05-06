@@ -20,7 +20,9 @@ jobs:
         uses: gradle/gradle-build-action@v3
 
       - name: Build with Gradle
-        run: ./gradlew build -PgithubUsername=asek-ll -PgithubPassword=${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew build
 
       - name: "Upload Artifact"
         uses: actions/upload-artifact@v4
