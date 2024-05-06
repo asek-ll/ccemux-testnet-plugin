@@ -24,7 +24,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.MVN_REPO_TOKEN }}
         run: ./gradlew build
 
-      - name: "Upload Artifact"
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
+        if: github.ref == 'refs/heads/master'
         with:
-          path: build/libs/ccemux-testnet-plugin-1.0-SNAPSHOT.jar
+          name: plugin
+          path: build/libs/ccemux-testnet-plugin-*.jar
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: build/libs/ccemux-testnet-plugin-*.jar
