@@ -6,18 +6,24 @@ import java.util.Optional;
 import java.util.Set;
 
 public class Network {
-    private final int id;
+//    private final int id;
     private final Map<String, NetworkPeripheral> peripherals = new HashMap<>();
     private final Map<String, ModemPeripheral> modems = new HashMap<>();
 
-
-    public Network(int id) {
-        this.id = id;
+    public Network(String s) {
     }
 
-    public int getId() {
-        return id;
-    }
+//    public Network(Integer integer) {
+//    }
+
+
+//    public Network(int id) {
+//        this.id = id;
+//    }
+
+//    public int getId() {
+//        return id;
+//    }
 
 //	public void transmit(Packet packet) {
 //	}

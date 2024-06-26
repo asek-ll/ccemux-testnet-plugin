@@ -2,7 +2,7 @@ package asek_ll.turtle;
 
 import java.util.Optional;
 
-import asek_ll.testnet.InventoryPeripheral;
+import asek_ll.testnet.Inventory;
 import asek_ll.testnet.ItemStack;
 import dan200.computercraft.api.lua.LuaException;
 
@@ -32,13 +32,13 @@ public class Turtle {
     }
 
 
-    public boolean suck(Optional<Integer> maxO, InventoryPeripheral inv) throws LuaException {
+    public boolean suck(Optional<Integer> maxO, Inventory inv) throws LuaException {
         int sourceSlot = 1;
-        while (sourceSlot < inv.size() && inv.getSlot(sourceSlot) == null) {
+        while (sourceSlot < inv.getSize() && inv.getSlot(sourceSlot) == null) {
             sourceSlot += 1;
         }
 
-        if (sourceSlot >= inv.size()) {
+        if (sourceSlot >= inv.getSize()) {
             return false;
         }
 
@@ -63,7 +63,7 @@ public class Turtle {
         return true;
     }
 
-    public boolean drop(Optional<Integer> max, InventoryPeripheral inv) throws LuaException {
+    public boolean drop(Optional<Integer> max, Inventory inv) throws LuaException {
         ItemStack stack = getSlot(selectedSlot);
         if (stack == null) {
             return false;
@@ -71,7 +71,7 @@ public class Turtle {
 
         int toTransfer = Math.min(stack.count(), max.orElse(64));
         int remain = toTransfer;
-        for (int i = 1; i <= inv.size(); i += 1) {
+        for (int i = 1; i <= inv.getSize(); i += 1) {
             ItemStack target = inv.getSlot(i);
             if (target == null) {
                 inv.setSlot(i, stack.copy(remain));

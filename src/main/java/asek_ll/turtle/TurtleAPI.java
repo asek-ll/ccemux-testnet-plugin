@@ -1,7 +1,6 @@
 package asek_ll.turtle;
 
 import asek_ll.testnet.InventoryPeripheral;
-import asek_ll.testnet.ItemStack;
 import dan200.computercraft.api.lua.IArguments;
 import dan200.computercraft.api.lua.ILuaAPI;
 import dan200.computercraft.api.lua.LuaException;
@@ -46,7 +45,7 @@ public class TurtleAPI implements ILuaAPI {
             return false;
         }
 
-        return turtle.drop(args.optInt(0), inv);
+        return turtle.drop(args.optInt(0), inv.getInventory());
     }
 
     @LuaFunction
@@ -56,7 +55,7 @@ public class TurtleAPI implements ILuaAPI {
             return false;
         }
 
-        return turtle.drop(args.optInt(0), inv);
+        return turtle.drop(args.optInt(0), inv.getInventory());
     }
 
     @LuaFunction
@@ -66,7 +65,7 @@ public class TurtleAPI implements ILuaAPI {
             return false;
         }
 
-        return turtle.drop(args.optInt(0), inv);
+        return turtle.drop(args.optInt(0), inv.getInventory());
     }
 
     @LuaFunction
@@ -76,7 +75,7 @@ public class TurtleAPI implements ILuaAPI {
             return false;
         }
 
-        return turtle.suck(args.optInt(0), inv);
+        return turtle.suck(args.optInt(0), inv.getInventory());
     }
 
     @LuaFunction
@@ -86,7 +85,7 @@ public class TurtleAPI implements ILuaAPI {
             return false;
         }
 
-        return turtle.suck(args.optInt(0), inv);
+        return turtle.suck(args.optInt(0), inv.getInventory());
     }
 
     @LuaFunction
@@ -96,7 +95,7 @@ public class TurtleAPI implements ILuaAPI {
             return false;
         }
 
-        return turtle.suck(args.optInt(0), inv);
+        return turtle.suck(args.optInt(0), inv.getInventory());
     }
 
 

@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import asek_ll.turtle.Recipe;
 import asek_ll.turtle.RecipeRegistry;
@@ -31,6 +32,8 @@ public class TestNetAPI extends Plugin {
     private final Map<Integer, EmulatedComputer> computerById = new HashMap<>();
     private final RecipeRegistry recipeRegistry = new RecipeRegistry();
     private final Map<Integer, Turtle> turtles = new HashMap<>();
+
+    private static final AtomicInteger counter = new AtomicInteger();
 
     @NotNull
     @Override
@@ -98,7 +101,7 @@ public class TestNetAPI extends Plugin {
         }
 
         @LuaFunction
-        public final String createModem(int networkId) {
+        public final String createModem(String networkId) throws LuaException {
             ModemPeripheral modem = new ModemPeripheral();
             peripherals.addPeripheral(networkId, modem);
             return modem.getNameLocal();
@@ -106,9 +109,13 @@ public class TestNetAPI extends Plugin {
 
         @LuaFunction
         public final String createInventory(IArguments arguments) throws LuaException {
-            int networkId = arguments.getInt(0);
-            String prefix = arguments.optString(1, "");
-            InventoryPeripheral inventoryPeripheral = new InventoryPeripheral(prefix, 27);
+            String networkId = arguments.getString(0);
+            String name = arguments.optString(1)
+                    .orElseGet(() -> "inventory_" + counter.getAndIncrement());
+
+            Inventory inventory = new Inventory(27);
+            InventoryPeripheral inventoryPeripheral = new InventoryPeripheral(name, inventory);
+
             peripherals.addPeripheral(networkId, inventoryPeripheral);
             return inventoryPeripheral.getNameLocal();
         }
@@ -125,7 +132,7 @@ public class TestNetAPI extends Plugin {
 
             ItemStack stack = parseStack(item);
 
-            inventory.setSlot(slot, stack);
+            inventory.getInventory().setSlot(slot, stack);
         }
 
         private static ItemStack parseStack(Map<?, ?> item) {
@@ -143,14 +150,22 @@ public class TestNetAPI extends Plugin {
             String modemName = arguments.getString(1);
             Optional<Integer> computerId = arguments.optInt(2);
 
-            Optional<NetworkPeripheral> peripheral = peripherals.getPeripheral(modemName);
+            Optional<NetworkPeripheral> peripheralO = peripherals.getPeripheral(modemName);
 
-            if (peripheral.isEmpty()) {
+            if (peripheralO.isEmpty()) {
                 return false;
             }
+            NetworkPeripheral peripheral = peripheralO.get();
 
             EmulatedComputer comp = computerId.map(computerById::get).orElse(computer);
-            comp.getEnvironment().setPeripheral(side, peripheral.get());
+
+            if (peripheral instanceof InventoryPeripheral) {
+                peripheral = new InventoryPeripheral(side.getName(), ((InventoryPeripheral) peripheral).getInventory());
+                Network localNetwork = peripherals.getOrCreateNetwork("loca_comp_%d".formatted(comp.getID()));
+                localNetwork.addPeripheral(peripheral);
+            }
+
+            comp.getEnvironment().setPeripheral(side, peripheral);
             return true;
         }
 

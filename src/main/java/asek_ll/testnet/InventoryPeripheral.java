@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.annotation.Nullable;
 
@@ -13,10 +12,8 @@ import dan200.computercraft.api.lua.LuaException;
 import dan200.computercraft.api.lua.LuaFunction;
 
 public class InventoryPeripheral implements NetworkPeripheral {
-    private static final AtomicInteger counter = new AtomicInteger();
-    private final int size;
     private final String name;
-    private final ItemStack[] items;
+    private final Inventory inventory;
 
     @Nullable
     private Network network;
@@ -32,12 +29,14 @@ public class InventoryPeripheral implements NetworkPeripheral {
         methods.put("pullItems", this::pullItemsRaw);
     }
 
-    public InventoryPeripheral(String prefix, int size) {
-        this.size = size;
-        name = "inventory_" + prefix + counter.getAndIncrement();
-        items = new ItemStack[size];
+    public InventoryPeripheral(String name, Inventory inventory) {
+        this.name = name;
+        this.inventory = inventory;
     }
 
+    public Inventory getInventory() {
+        return inventory;
+    }
 
     @Override
     public String getType() {
@@ -46,7 +45,7 @@ public class InventoryPeripheral implements NetworkPeripheral {
 
     @LuaFunction
     public final int size() {
-        return size;
+        return inventory.getSize();
     }
 
 
@@ -58,8 +57,8 @@ public class InventoryPeripheral implements NetworkPeripheral {
     public final Map<Integer, Object> list() {
         Map<Integer, Object> result = new HashMap<>();
 
-        for (int i = 1; i <= size; i++) {
-            ItemStack stack = getSlot(i);
+        for (int i = 1; i <= size(); i++) {
+            ItemStack stack = inventory.getSlot(i);
             if (stack != null) {
                 result.put(i, stack.toItem());
             }
@@ -74,7 +73,7 @@ public class InventoryPeripheral implements NetworkPeripheral {
 
     @LuaFunction
     public final Object getItemDetail(int slot) {
-        ItemStack stack = getSlot(slot);
+        ItemStack stack = inventory.getSlot(slot);
         if (stack == null) {
             return null;
         }
@@ -87,7 +86,7 @@ public class InventoryPeripheral implements NetworkPeripheral {
 
     @LuaFunction
     public final int getItemLimit(int slot) {
-        return getSlot(slot).maxCount();
+        return inventory.getSlot(slot).maxCount();
     }
 
     public Object getItemLimitRaw(IArguments args) throws LuaException {
@@ -99,15 +98,20 @@ public class InventoryPeripheral implements NetworkPeripheral {
     }
 
     @LuaFunction
-    public final int pushItems(String toName, int fromSlot, Optional<Integer> limit, Optional<Integer> toSlot) {
-        if (network == null) {
-            return 0;
-        }
-        Optional<InventoryPeripheral> targetO = network.getRemote(toName, InventoryPeripheral.class);
-        return targetO
-                .map(inventoryPeripheral -> transfer(this, fromSlot, limit, inventoryPeripheral, toSlot))
-                .orElse(0);
+    public final int pushItems(String toName, int fromSlot, Optional<Integer> limit, Optional<Integer> toSlot)
+            throws LuaException {
+        return transfer(this, fromSlot, limit, getInventoryPeripheral(toName), toSlot);
+    }
 
+    private InventoryPeripheral getInventoryPeripheral(String toName) throws LuaException {
+        Optional<InventoryPeripheral> targetO = Optional.ofNullable(network)
+                .flatMap(n -> n.getRemote(toName, InventoryPeripheral.class));
+
+        if (targetO.isEmpty()) {
+            throw new LuaException("Inventory '" + toName + "' not exists");
+        }
+
+        return targetO.get();
     }
 
     public Object pullItemsRaw(IArguments args) throws LuaException {
@@ -115,15 +119,8 @@ public class InventoryPeripheral implements NetworkPeripheral {
     }
 
     @LuaFunction
-    public final int pullItems(String fromName, int fromSlot, Optional<Integer> limit, Optional<Integer> toSlot) {
-        if (network == null) {
-            return 0;
-        }
-        Optional<InventoryPeripheral> fromO = network.getRemote(fromName, InventoryPeripheral.class);
-        return fromO
-                .map(inventoryPeripheral -> transfer(inventoryPeripheral, fromSlot, limit, this, toSlot))
-                .orElse(0);
-
+    public final int pullItems(String fromName, int fromSlot, Optional<Integer> limit, Optional<Integer> toSlot) throws LuaException {
+        return transfer(getInventoryPeripheral(fromName), fromSlot, limit, this, toSlot);
     }
 
     public static int transfer(InventoryPeripheral source,
@@ -132,7 +129,7 @@ public class InventoryPeripheral implements NetworkPeripheral {
                                InventoryPeripheral target,
                                Optional<Integer> targetSlot) {
 
-        ItemStack sourceStack = source.getSlot(sourceSlot);
+        ItemStack sourceStack = source.inventory.getSlot(sourceSlot);
         if (sourceStack == null) {
             return 0;
         }
@@ -144,8 +141,8 @@ public class InventoryPeripheral implements NetworkPeripheral {
         }
 
         int toTransfer = sourceLimit;
-        for (int i = 0; i < target.size; i++) {
-            toTransfer -= move(target, i, source, sourceSlot, sourceStack, sourceLimit);
+        for (int slot = 1; slot <= target.size(); slot++) {
+            toTransfer -= move(target, slot, source, sourceSlot, sourceStack, sourceLimit);
             if (toTransfer == 0) {
                 break;
             }
@@ -159,17 +156,18 @@ public class InventoryPeripheral implements NetworkPeripheral {
                             int sourceSlot,
                             ItemStack sourceStack,
                             int sourceLimit) {
-        if (target.getSlot(targetSlot) != null && !target.getSlot(targetSlot).isSame(sourceStack)) {
+        if (target.inventory.getSlot(targetSlot) != null && !target.inventory.getSlot(targetSlot).isSame(sourceStack)) {
             return 0;
         }
 
-        int targetCount = target.getSlot(targetSlot) != null ? target.getSlot(targetSlot).count() : 0;
+        int targetCount = target.inventory.getSlot(targetSlot) != null ?
+                target.inventory.getSlot(targetSlot).count() : 0;
 
         int targetLimit = sourceStack.maxCount() - targetCount;
 
         int resultLimit = Math.min(sourceLimit, targetLimit);
 
-        target.setSlot(targetSlot, new ItemStack(sourceStack.name(),
+        target.inventory.setSlot(targetSlot, new ItemStack(sourceStack.name(),
                 targetCount + resultLimit,
                 sourceStack.nbt(),
                 sourceStack.maxCount()
@@ -177,13 +175,13 @@ public class InventoryPeripheral implements NetworkPeripheral {
 
         int resultSourceCount = sourceStack.count() - resultLimit;
         if (resultSourceCount > 0) {
-            source.setSlot(sourceSlot, new ItemStack(sourceStack.name(),
+            source.inventory.setSlot(sourceSlot, new ItemStack(sourceStack.name(),
                     resultSourceCount,
                     sourceStack.nbt(),
                     sourceStack.maxCount()
             ));
         } else {
-            source.setSlot(sourceSlot, null);
+            source.inventory.setSlot(sourceSlot, null);
         }
 
         return resultLimit;
@@ -208,13 +206,5 @@ public class InventoryPeripheral implements NetworkPeripheral {
     public Object call(IArguments arguments) throws LuaException {
         String method = arguments.getString(0);
         return methods.get(method).call(arguments.drop(1));
-    }
-
-    public void setSlot(int slot, ItemStack stack) {
-        items[slot - 1] = stack;
-    }
-
-    public ItemStack getSlot(int slot) {
-        return items[slot - 1];
     }
 }
