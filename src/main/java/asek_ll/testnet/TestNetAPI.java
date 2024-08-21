@@ -1,11 +1,13 @@
 package asek_ll.testnet;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import asek_ll.turtle.Recipe;
@@ -145,13 +147,29 @@ public class TestNetAPI extends Plugin {
         }
 
         @LuaFunction
-        public final String createTank(IArguments arguments) throws LuaException {
-            String networkId = arguments.getString(0);
-            String name = arguments.optString(1)
+        public final String createTank(String networkId, Optional<Map<?, ?>> paramsO) throws LuaException {
+            Map<?, ?> params = paramsO.orElse(Map.of());
+
+            String name = Optional.ofNullable((String) params.get("name"))
                     .orElseGet(() -> "tank_" + counter.getAndIncrement());
 
-            FluidStorage storage = new FluidStorage(arguments.optInt(1, 1));
-            FluidStoragePeripheral peripheral = new FluidStoragePeripheral(name, storage);
+            Optional<? extends Map<?, ?>> tanks = Optional.ofNullable((Map<?, ?>) params.get("tanks"));
+            List<Integer> sizes = new ArrayList<>();
+            if (tanks.isPresent()) {
+                Collection<?> sizesRaw = tanks.get().values();
+                for (Object size : sizesRaw) {
+                    sizes.add(((Number) size).intValue());
+                }
+            }
+            if (sizes.isEmpty()) {
+                sizes.add(1000);
+            }
+
+            Set<String> additionalTypes = Optional.ofNullable((String) params.get("type"))
+                    .map(Set::of).orElse(Set.of());
+
+            FluidStorage storage = new FluidStorage(sizes.stream().mapToInt(Integer::intValue).toArray());
+            FluidStoragePeripheral peripheral = new FluidStoragePeripheral(name, storage, additionalTypes);
 
             peripherals.addPeripheral(networkId, peripheral);
             return peripheral.getNameLocal();
@@ -159,7 +177,7 @@ public class TestNetAPI extends Plugin {
 
 
         @LuaFunction
-        public final void setFluid(String tankName, Map<?, ?> item, Optional<Integer> slot) {
+        public final void setFluid(String tankName, Optional<Map<?, ?>> item) {
             Optional<FluidStoragePeripheral> peripheral = peripherals
                     .getPeripheral(tankName, FluidStoragePeripheral.class);
 
@@ -168,7 +186,12 @@ public class TestNetAPI extends Plugin {
             }
             FluidStoragePeripheral tank = peripheral.get();
 
-            FluidStack stack = parseFluidStack(item);
+            FluidStack stack = null;
+            Optional<Integer> slot = Optional.empty();
+            if (item.isPresent()) {
+                stack = parseFluidStack(item.get());
+                slot = Optional.ofNullable((Number) item.get().get("slot")).map(Number::intValue);
+            }
 
             tank.getStorage().setTank(slot.orElse(1), stack);
         }
@@ -176,8 +199,7 @@ public class TestNetAPI extends Plugin {
         private static FluidStack parseFluidStack(Map<?, ?> item) {
             return new FluidStack(
                     (String) item.get("name"),
-                    ((Number) item.get("amount")).intValue(),
-                    ((Number) item.get("maxAmount")).intValue()
+                    ((Number) item.get("amount")).intValue()
             );
         }
 
@@ -198,16 +220,15 @@ public class TestNetAPI extends Plugin {
             EmulatedComputer comp = computerId.map(computerById::get).orElse(computer);
 
             if (peripheral instanceof InventoryPeripheral) {
-                InventoryPeripheral localPeripheral = new InventoryPeripheral(side.getName(),
+                peripheral = new InventoryPeripheral(side.getName(),
                         ((InventoryPeripheral) peripheral).getInventory());
                 Network localNetwork = peripherals.getOrCreateNetwork("local_comp_%d".formatted(comp.getID()));
-                localNetwork.addPeripheral(localPeripheral);
-            }
-            if (peripheral instanceof FluidStoragePeripheral) {
-                FluidStoragePeripheral localPeripheral = new FluidStoragePeripheral(side.getName(),
-                        ((FluidStoragePeripheral) peripheral).getStorage());
+                localNetwork.addPeripheral(peripheral);
+            } else if (peripheral instanceof FluidStoragePeripheral fluidStorage) {
+                peripheral = new FluidStoragePeripheral(side.getName(),
+                        fluidStorage.getStorage(), fluidStorage.getAdditionalTypes());
                 Network localNetwork = peripherals.getOrCreateNetwork("local_comp_%d".formatted(comp.getID()));
-                localNetwork.addPeripheral(localPeripheral);
+                localNetwork.addPeripheral(peripheral);
             }
 
             comp.getEnvironment().setPeripheral(side, peripheral);

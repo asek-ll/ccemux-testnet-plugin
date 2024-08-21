@@ -6,11 +6,12 @@ import java.util.Optional;
 import java.util.Set;
 
 public class Network {
-//    private final int id;
+    private final String id;
     private final Map<String, NetworkPeripheral> peripherals = new HashMap<>();
     private final Map<String, ModemPeripheral> modems = new HashMap<>();
 
-    public Network(String s) {
+    public Network(String id) {
+        this.id = id;
     }
 
 //    public Network(Integer integer) {
@@ -21,9 +22,9 @@ public class Network {
 //        this.id = id;
 //    }
 
-//    public int getId() {
-//        return id;
-//    }
+    public String getId() {
+        return id;
+    }
 
 //	public void transmit(Packet packet) {
 //	}

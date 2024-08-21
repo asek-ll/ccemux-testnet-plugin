@@ -5,8 +5,7 @@ import java.util.Map;
 
 public record FluidStack(
         String name,
-        int amount,
-        int maxAmount
+        int amount
 ) {
 
     public boolean isSame(FluidStack other) {
@@ -14,7 +13,7 @@ public record FluidStack(
     }
 
     public FluidStack copy(int amount) {
-        return new FluidStack(name, amount, maxAmount);
+        return new FluidStack(name, amount);
     }
 
     public Map<String, Object> toDetails() {

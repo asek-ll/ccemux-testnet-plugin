@@ -14,10 +14,12 @@ import dan200.computercraft.api.lua.LuaFunction;
 public class FluidStoragePeripheral implements NetworkPeripheral {
     private final String name;
     private final FluidStorage storage;
+    private final Set<String> additionalTypes;
 
-    public FluidStoragePeripheral(String name, FluidStorage storage) {
+    public FluidStoragePeripheral(String name, FluidStorage storage, Set<String> additionalTypes) {
         this.name = name;
         this.storage = storage;
+        this.additionalTypes = additionalTypes;
     }
 
     @Nullable
@@ -55,6 +57,11 @@ public class FluidStoragePeripheral implements NetworkPeripheral {
     @Override
     public String getType() {
         return "fluid_storage";
+    }
+
+    @Override
+    public Set<String> getAdditionalTypes() {
+        return additionalTypes;
     }
 
     public FluidStorage getStorage() {
@@ -106,7 +113,7 @@ public class FluidStoragePeripheral implements NetworkPeripheral {
     }
 
     public Object pushFluidRaw(IArguments args) throws LuaException {
-        return pullFluid(args.getString(0), args.optInt(1), args.optString(2));
+        return pushFluid(args.getString(0), args.optInt(1), args.optString(2));
     }
 
     private static int move(FluidStorage source, int sourceTankSlot,
@@ -122,7 +129,7 @@ public class FluidStoragePeripheral implements NetworkPeripheral {
         }
         int toMove = Math.min(sourceTank.amount(), amount);
         if (targetTank != null) {
-            toMove = Math.min(toMove, sourceTank.maxAmount() - targetTank.amount());
+            toMove = Math.min(toMove, target.getCapacity(targetTankSlot) - targetTank.amount());
         }
 
         if (toMove == sourceTank.amount()) {

@@ -108,7 +108,7 @@ public class InventoryPeripheral implements NetworkPeripheral {
                 .flatMap(n -> n.getRemote(toName, InventoryPeripheral.class));
 
         if (targetO.isEmpty()) {
-            throw new LuaException("Inventory '" + toName + "' not exists");
+            throw new LuaException("Inventory '" + toName + "' not exists on network " + network.getId());
         }
 
         return targetO.get();
